@@ -1,1 +1,7 @@
-     python -m uvicorn main:app --reload
+커서 ai
+python -m uvicorn main:app --reload
+
+
+cmd
+cd C:\Users\사용자\Downloads\lecture_note_ai
+python -m uvicorn main:app --reload
