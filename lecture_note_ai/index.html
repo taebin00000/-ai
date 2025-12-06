@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <script>
+      if (location.protocol === "file:") {
+        location.href = "http://127.0.0.1:8000/";
+      }
+    </script>
+    <meta charset="UTF-8">
+    <title>강의 자동 요약봇 대시보드</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #222; }
+        .container { max-width: 600px; margin: 80px auto; background: #fff; border-radius: 12px; padding: 2rem; box-shadow: 0 0 12px #eee; }
+        h1 { text-align: center; color: #1347ff; }
+        label { font-weight: bold; }
+        .result { margin-top: 2rem; background: #f0f4ff; border-radius: 8px; padding: 1.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>강의 자동 요약봇</h1>
+        <form id="upload-form">
+            <label for="audio">음성/영상 파일 업로드:</label>
+            <input type="file" id="audio" name="audio" accept="audio/*,video/*" required>
+            <div id="estimated-time" style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;"></div>
+            <button type="submit" style="margin-top: 1rem;">요약 요청</button>
+        </form>
+        <div id="result" class="result" style="display:none;">
+            <h2>요약 결과</h2>
+            <div><strong>원문:</strong> <span id="transcript"></span></div>
+            <div><strong>요약:</strong> <span id="summary"></span></div>
+            <div><strong>키워드:</strong> <span id="keywords"></span></div>
+            <div><strong>주제:</strong> <span id="topics"></span></div>
+        </div>
+    </div>
+    <script>
+        // 파일 선택 시 예상 시간 계산 및 표시
+        document.getElementById('audio').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const timeDiv = document.getElementById('estimated-time');
+            
+            if (!file) {
+                timeDiv.textContent = '';
+                return;
+            }
+            
+            // 파일 타입 확인
+            const isVideo = file.type.startsWith('video/');
+            const isAudio = file.type.startsWith('audio/');
+            const fileType = isVideo ? '영상' : (isAudio ? '음성' : '파일');
+            
+            // 오디오/비디오 파일의 길이를 가져오기
+            const url = URL.createObjectURL(file);
+            const media = document.createElement(isVideo ? 'video' : 'audio');
+            media.preload = 'metadata';
+            media.src = url;
+            
+            media.addEventListener('loadedmetadata', function() {
+                const duration = media.duration; // 초 단위
+                
+                if (isNaN(duration) || duration === 0) {
+                    timeDiv.textContent = `${fileType} 파일 정보를 읽는 중...`;
+                    URL.revokeObjectURL(url);
+                    return;
+                }
+                
+                const minutes = Math.floor(duration / 60);
+                const seconds = Math.floor(duration % 60);
+                
+                // 예상 처리 시간 계산
+                // 음성: 1분 = 약 3초 처리
+                // 영상: 1분 = 약 4초 처리 (영상은 오디오 추출 + STT 처리)
+                const processingRate = isVideo ? 4 : 3;
+                const estimatedSeconds = Math.ceil(duration / 60 * processingRate);
+                const estimatedMinutes = Math.floor(estimatedSeconds / 60);
+                const estimatedSecs = estimatedSeconds % 60;
+                
+                let timeText = `[${fileType}] 파일 길이: ${minutes}분 ${seconds}초`;
+                if (estimatedMinutes > 0) {
+                    timeText += ` | 예상 처리 시간: 약 ${estimatedMinutes}분 ${estimatedSecs}초`;
+                } else {
+                    timeText += ` | 예상 처리 시간: 약 ${estimatedSecs}초`;
+                }
+                
+                timeDiv.textContent = timeText;
+                URL.revokeObjectURL(url);
+            });
+            
+            media.addEventListener('error', function() {
+                timeDiv.textContent = `${fileType} 파일 정보를 읽을 수 없습니다. 파일 형식을 확인해주세요.`;
+                URL.revokeObjectURL(url);
+            });
+            
+            // 로딩 중 메시지
+            timeDiv.textContent = `${fileType} 파일 정보를 읽는 중...`;
+        });
+        
+        document.getElementById('upload-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            const fileInput = document.getElementById('audio');
+            formData.append("audio", fileInput.files[0]);
+            const resultDiv = document.getElementById('result');
+            // 실행중 메시지 표시
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = "<strong>현재 실행중입니다...</strong>";
+            try {
+                const response = await fetch("/lecture/summary/", {
+                    method: "POST",
+                    body: formData
+                });
+                if (!response.ok) throw new Error('실패: ' + response.status);
+                const data = await response.json();
+                // 정상 결과 표시
+                resultDiv.innerHTML = `
+                    <h2>요약 결과</h2>
+                    <div><strong>원문:</strong> <span id="transcript">${data.transcript || '-'}</span></div>
+                    <div><strong>요약:</strong> <span id="summary">${data.summary || '-'}</span></div>
+                    <div><strong>키워드:</strong> <span id="keywords">${data.keywords || '-'}</span></div>
+                    <div><strong>주제:</strong> <span id="topics">${data.topics || '-'}</span></div>
+                `;
+            } catch (err) {
+                alert("업로드/요약 중 오류: " + err.message);
+                resultDiv.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
