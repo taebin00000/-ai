@@ -1,0 +1,21 @@
+1) 서버 구동 필수 패키지
+python -m pip install --upgrade pip && pip install fastapi uvicorn
+
+
+2) 음성·영상 STT/요약까지 쓰려면 추가
+pip install
+
+최초 실행 시 Whisper 모델을 내려받으므로 시간이 조금 걸립니다.
+
+
+3) ffmpeg 설치 (Whisper가 오디오/영상 디코딩 시 필요)
+https://ffmpeg.org → Windows용 ffmpeg 압축파일 다운로드
+압축 풀기 (예: C:\ffmpeg)
+환경변수 PATH에 C:\ffmpeg\bin 추가
+제어판 → 시스템 → 고급 시스템 설정 → 환경 변수 → Path 편집 → C:\ffmpeg\bin 추가 → 확인
+CMD/PowerShell 재실행 후 확인:
+   ffmpeg
+4) 서버 실행
+cd C:\Users\사용자\Downloads\lecture_note_aipython -m uvicorn main:app --reload
+5) 접속
+브라우저 주소창에 http://127.0.0.1:8000/
