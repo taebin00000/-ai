@@ -1,0 +1,4 @@
+python -m pip install --upgrade pip
+pip install fastapi uvicorn python-multipart openai-whisper
+cd /d [프로젝트 폴더 경로]
+python -m uvicorn main:app --reload
